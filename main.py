@@ -1,267 +1,256 @@
+# main.py  —  Menu principal do Dino AI
+
 import pygame
-import os
-import random
 pygame.init()
 
-# Global Constants
-SCREEN_HEIGHT = 600
-SCREEN_WIDTH = 1100
-SCREEN = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+import sys
 
-RUNNING = [pygame.image.load(os.path.join("Assets/Dino", "DinoRun1.png")),
-           pygame.image.load(os.path.join("Assets/Dino", "DinoRun2.png"))]
-JUMPING = pygame.image.load(os.path.join("Assets/Dino", "DinoJump.png"))
-DUCKING = [pygame.image.load(os.path.join("Assets/Dino", "DinoDuck1.png")),
-           pygame.image.load(os.path.join("Assets/Dino", "DinoDuck2.png"))]
+from core.constants import *
+from core.assets import get_font
+from core.utils import draw_text, draw_panel
 
-SMALL_CACTUS = [pygame.image.load(os.path.join("Assets/Cactus", "SmallCactus1.png")),
-                pygame.image.load(os.path.join("Assets/Cactus", "SmallCactus2.png")),
-                pygame.image.load(os.path.join("Assets/Cactus", "SmallCactus3.png"))]
-LARGE_CACTUS = [pygame.image.load(os.path.join("Assets/Cactus", "LargeCactus1.png")),
-                pygame.image.load(os.path.join("Assets/Cactus", "LargeCactus2.png")),
-                pygame.image.load(os.path.join("Assets/Cactus", "LargeCactus3.png"))]
+# ══════════════════════════════════════════════════════════════════════════════
+# SETUP
+# ══════════════════════════════════════════════════════════════════════════════
 
-BIRD = [pygame.image.load(os.path.join("Assets/Bird", "Bird1.png")),
-        pygame.image.load(os.path.join("Assets/Bird", "Bird2.png"))]
+pygame.display.set_caption("Dino AI")
+clock = pygame.time.Clock()
 
-CLOUD = pygame.image.load(os.path.join("Assets/Other", "Cloud.png"))
+font_lg = get_font(HUD_FONT_LARGE, bold=True)
+font_md = get_font(HUD_FONT_MEDIUM)
+font_sm = get_font(HUD_FONT_SMALL)
+fonts   = (font_lg, font_md, font_sm)
 
-BG = pygame.image.load(os.path.join("Assets/Other", "Track.png"))
+# ══════════════════════════════════════════════════════════════════════════════
+# MENU HELPER
+# ══════════════════════════════════════════════════════════════════════════════
 
-
-class Dinosaur:
-    X_POS = 80
-    Y_POS = 310
-    Y_POS_DUCK = 340
-    JUMP_VEL = 8.5
-
-    def __init__(self):
-        self.duck_img = DUCKING
-        self.run_img = RUNNING
-        self.jump_img = JUMPING
-
-        self.dino_duck = False
-        self.dino_run = True
-        self.dino_jump = False
-
-        self.step_index = 0
-        self.jump_vel = self.JUMP_VEL
-        self.image = self.run_img[0]
-        self.dino_rect = self.image.get_rect()
-        self.dino_rect.x = self.X_POS
-        self.dino_rect.y = self.Y_POS
-
-    def update(self, userInput):
-        if self.dino_duck:
-            self.duck()
-        if self.dino_run:
-            self.run()
-        if self.dino_jump:
-            self.jump()
-
-        if self.step_index >= 10:
-            self.step_index = 0
-
-        if userInput[pygame.K_UP] and not self.dino_jump:
-            self.dino_duck = False
-            self.dino_run = False
-            self.dino_jump = True
-        elif userInput[pygame.K_DOWN] and not self.dino_jump:
-            self.dino_duck = True
-            self.dino_run = False
-            self.dino_jump = False
-        elif not (self.dino_jump or userInput[pygame.K_DOWN]):
-            self.dino_duck = False
-            self.dino_run = True
-            self.dino_jump = False
-
-    def duck(self):
-        self.image = self.duck_img[self.step_index // 5]
-        self.dino_rect = self.image.get_rect()
-        self.dino_rect.x = self.X_POS
-        self.dino_rect.y = self.Y_POS_DUCK
-        self.step_index += 1
-
-    def run(self):
-        self.image = self.run_img[self.step_index // 5]
-        self.dino_rect = self.image.get_rect()
-        self.dino_rect.x = self.X_POS
-        self.dino_rect.y = self.Y_POS
-        self.step_index += 1
-
-    def jump(self):
-        self.image = self.jump_img
-        if self.dino_jump:
-            self.dino_rect.y -= self.jump_vel * 4
-            self.jump_vel -= 0.8
-        if self.jump_vel < - self.JUMP_VEL:
-            self.dino_jump = False
-            self.jump_vel = self.JUMP_VEL
-
-    def draw(self, SCREEN):
-        SCREEN.blit(self.image, (self.dino_rect.x, self.dino_rect.y))
+def current_screen():
+    """Sempre retorna a surface de display atual, mesmo após set_mode externo."""
+    s = pygame.display.get_surface()
+    if s is None:
+        s = pygame.display.set_mode((SCREEN_W, SCREEN_H))
+    return s
 
 
-class Cloud:
-    def __init__(self):
-        self.x = SCREEN_WIDTH + random.randint(800, 1000)
-        self.y = random.randint(50, 100)
-        self.image = CLOUD
-        self.width = self.image.get_width()
+def draw_menu(title, options, subtitle=None):
+    """
+    options: list of (key_label, description, color)
+    """
+    surface = current_screen()
+    surface.fill(WHITE)
 
-    def update(self):
-        self.x -= game_speed
-        if self.x < -self.width:
-            self.x = SCREEN_WIDTH + random.randint(2500, 3000)
-            self.y = random.randint(50, 100)
+    cx = SCREEN_W // 2
 
-    def draw(self, SCREEN):
-        SCREEN.blit(self.image, (self.x, self.y))
+    draw_text(surface, title, font_lg, DARK, cx, 110, center=True)
 
+    if subtitle:
+        draw_text(surface, subtitle, font_sm, GRAY, cx, 175, center=True)
 
-class Obstacle:
-    def __init__(self, image, type):
-        self.image = image
-        self.type = type
-        self.rect = self.image[self.type].get_rect()
-        self.rect.x = SCREEN_WIDTH
+    for i, (key_label, desc, color) in enumerate(options):
+        y = 220 + i * 52
+        draw_text(surface, f"[{key_label}]", font_md, DARK_GRAY, cx - 180, y)
+        draw_text(surface, desc,             font_md, color,      cx - 110, y)
 
-    def update(self):
-        self.rect.x -= game_speed
-        if self.rect.x < -self.rect.width:
-            obstacles.pop()
-
-    def draw(self, SCREEN):
-        SCREEN.blit(self.image[self.type], self.rect)
+    pygame.display.flip()
 
 
-class SmallCactus(Obstacle):
-    def __init__(self, image):
-        self.type = random.randint(0, 2)
-        super().__init__(image, self.type)
-        self.rect.y = 325
+def wait_key():
+    """Retorna o pygame.key code da próxima tecla pressionada, ou None no QUIT."""
+    while True:
+        clock.tick(60)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return None
+            if event.type == pygame.KEYDOWN:
+                return event.key
 
 
-class LargeCactus(Obstacle):
-    def __init__(self, image):
-        self.type = random.randint(0, 2)
-        super().__init__(image, self.type)
-        self.rect.y = 300
+# ══════════════════════════════════════════════════════════════════════════════
+# MENUS
+# ══════════════════════════════════════════════════════════════════════════════
+
+def menu_principal():
+    draw_menu(
+        "DINO  AI",
+        [
+            ("1",   "Jogar vs IA",  BLUE),
+            ("2",   "Replay DQN",   GREEN),
+            ("3",   "Replay NEAT",  CYAN),
+            ("4",   "Treinar",      ORANGE),
+            ("ESC", "Sair",         GRAY),
+        ],
+    )
+    key = wait_key()
+    if key == pygame.K_1:     return "versus"
+    if key == pygame.K_2:     return "replay_dqn"
+    if key == pygame.K_3:     return "replay_neat"
+    if key == pygame.K_4:     return "train"
+    if key != pygame.K_ESCAPE: return "menu_principal"
+    return None   # ESC ou QUIT
 
 
-class Bird(Obstacle):
-    def __init__(self, image):
-        self.type = 0
-        super().__init__(image, self.type)
-        self.rect.y = 250
-        self.index = 0
+def menu_treinar():
+    draw_menu(
+        "TREINAR",
+        [
+            ("1",   "DQN",    BLUE),
+            ("2",   "NEAT",   GREEN),
+            ("ESC", "Voltar", GRAY),
+        ],
+    )
+    key = wait_key()
+    if key == pygame.K_1:   return "dqn"
+    if key == pygame.K_2:   return "neat"
+    return "back"
 
-    def draw(self, SCREEN):
-        if self.index >= 9:
-            self.index = 0
-        SCREEN.blit(self.image[self.index//5], self.rect)
-        self.index += 1
+def menu_dificuldade():
+    draw_menu(
+        "Dificuldade",
+        [
+            ("1", "easy", BLUE),
+            ("2", "expert", GREEN),
+            ("ESC", "Voltar", GRAY),
+        ],
+    )
+    key = wait_key()
+    if key == pygame.K_1:   return "easy"
+    if key == pygame.K_2:   return "expert"
+    return None
 
+
+def menu_modo_treino(label):
+    draw_menu(
+        f"TREINAR  {label}",
+        [
+            ("1",   "Novo treinamento",     BLUE),
+            ("2",   "Continuar do último",  YELLOW),
+            ("ESC", "Voltar",               GRAY),
+        ],
+        subtitle="[2] Retoma o último checkpoint salvo",
+    )
+    key = wait_key()
+    if key == pygame.K_1:   return "new"
+    if key == pygame.K_2:   return "resume"
+    return "back"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# VERSUS
+# ══════════════════════════════════════════════════════════════════════════════
+
+def run_versus():
+    from core.versus import show_menu as versus_menu
+    from core.versus import load_dqn, load_neat, play_round
+    from core.game import DinoEnv
+
+    pygame.display.set_mode((SCREEN_W, SCREEN_H))
+    pygame.display.set_caption("Dino — Humano vs IA")
+
+    screen = current_screen()
+    choice = versus_menu(screen, fonts)
+
+    if choice is None:
+        return
+
+    if choice == "DQN":
+        ai_model = load_dqn()
+    else:
+        difficult = menu_dificuldade()
+        if difficult is None:
+            return
+        ai_model = load_neat(difficult)
+
+    #ai_model = load_dqn() if choice == "DQN" else load_neat()
+    env = DinoEnv(render_mode=True)
+
+    while True:
+        result = play_round(ai_model, choice, env, fonts)
+        if result in ("menu", "quit", None):
+            break
+        # "restart" → continua o loop
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# REPLAY
+# ══════════════════════════════════════════════════════════════════════════════
+
+def run_replay_dqn():
+    pygame.display.set_caption("Dino — Replay DQN")
+    from dqn.replay_dqn import replay
+    replay()
+
+
+def run_replay_neat():
+    pygame.display.set_caption("Dino — Replay NEAT")
+    from neat_ai.replay_neat import replay
+    replay()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TREINAR
+# ══════════════════════════════════════════════════════════════════════════════
+
+def run_train_dqn(resume: bool):
+    pygame.display.set_caption("Dino — Treino DQN")
+    from dqn.train_dqn import train
+    train(resume=resume)
+
+
+def run_train_neat(resume: bool):
+    pygame.display.set_caption("Dino — Treino NEAT")
+    from neat_ai.train_neat import run
+    run(resume=resume)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MAIN LOOP
+# ══════════════════════════════════════════════════════════════════════════════
 
 def main():
-    global game_speed, x_pos_bg, y_pos_bg, points, obstacles
-    run = True
-    clock = pygame.time.Clock()
-    player = Dinosaur()
-    cloud = Cloud()
-    game_speed = 20
-    x_pos_bg = 0
-    y_pos_bg = 380
-    points = 0
-    font = pygame.font.Font('freesansbold.ttf', 20)
-    obstacles = []
-    death_count = 0
 
-    def score():
-        global points, game_speed
-        points += 1
-        if points % 100 == 0:
-            game_speed += 1
+    pygame.display.set_mode((SCREEN_W, SCREEN_H))
 
-        text = font.render("Points: " + str(points), True, (0, 0, 0))
-        textRect = text.get_rect()
-        textRect.center = (1000, 40)
-        SCREEN.blit(text, textRect)
+    while True:
 
-    def background():
-        global x_pos_bg, y_pos_bg
-        image_width = BG.get_width()
-        SCREEN.blit(BG, (x_pos_bg, y_pos_bg))
-        SCREEN.blit(BG, (image_width + x_pos_bg, y_pos_bg))
-        if x_pos_bg <= -image_width:
-            SCREEN.blit(BG, (image_width + x_pos_bg, y_pos_bg))
-            x_pos_bg = 0
-        x_pos_bg -= game_speed
+        pygame.display.set_caption("Dino AI")
+        action = menu_principal()
 
-    while run:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                run = False
+        if action is None:
+            break
 
-        SCREEN.fill((255, 255, 255))
-        userInput = pygame.key.get_pressed()
+        # ── versus ────────────────────────────────────────────────────────────
+        elif action == "versus":
+            run_versus()
 
-        player.draw(SCREEN)
-        player.update(userInput)
+        # ── replays ───────────────────────────────────────────────────────────
+        elif action == "replay_dqn":
+            run_replay_dqn()
 
-        if len(obstacles) == 0:
-            if random.randint(0, 2) == 0:
-                obstacles.append(SmallCactus(SMALL_CACTUS))
-            elif random.randint(0, 2) == 1:
-                obstacles.append(LargeCactus(LARGE_CACTUS))
-            elif random.randint(0, 2) == 2:
-                obstacles.append(Bird(BIRD))
+        elif action == "replay_neat":
+            run_replay_neat()
 
-        for obstacle in obstacles:
-            obstacle.draw(SCREEN)
-            obstacle.update()
-            if player.dino_rect.colliderect(obstacle.rect):
-                pygame.time.delay(2000)
-                death_count += 1
-                menu(death_count)
+        # ── treinar ───────────────────────────────────────────────────────────
+        elif action == "train":
 
-        background()
+            algo = menu_treinar()
+            if algo == "back":
+                continue
 
-        cloud.draw(SCREEN)
-        cloud.update()
+            mode = menu_modo_treino(algo.upper())
+            if mode == "back":
+                continue
 
-        score()
+            resume = (mode == "resume")
 
-        clock.tick(30)
-        pygame.display.update()
+            if algo == "dqn":
+                run_train_dqn(resume)
+            else:
+                run_train_neat(resume)
+
+    pygame.quit()
+    sys.exit()
 
 
-def menu(death_count):
-    global points
-    run = True
-    while run:
-        SCREEN.fill((255, 255, 255))
-        font = pygame.font.Font('freesansbold.ttf', 30)
-
-        if death_count == 0:
-            text = font.render("Press any Key to Start", True, (0, 0, 0))
-        elif death_count > 0:
-            text = font.render("Press any Key to Restart", True, (0, 0, 0))
-            score = font.render("Your Score: " + str(points), True, (0, 0, 0))
-            scoreRect = score.get_rect()
-            scoreRect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50)
-            SCREEN.blit(score, scoreRect)
-        textRect = text.get_rect()
-        textRect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
-        SCREEN.blit(text, textRect)
-        SCREEN.blit(RUNNING[0], (SCREEN_WIDTH // 2 - 20, SCREEN_HEIGHT // 2 - 140))
-        pygame.display.update()
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                run = False
-            if event.type == pygame.KEYDOWN:
-                main()
-
-
-menu(death_count=0)
+if __name__ == "__main__":
+    main()
