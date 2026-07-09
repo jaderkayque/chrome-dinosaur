@@ -10,18 +10,3 @@ __pycache__/
 # IDE
 .idea/
 .vscode/
-
-# Artefatos de avaliação / análise (scratch)
-eval_*.npy
-figs/
-
-# Documentos / relatórios gerados
-*.zip
-relatorio_ieee_v2.tex
-
-# Arquivos internos
-CLAUDE.md
-
-# Sistema
-.DS_Store
-Thumbs.db
